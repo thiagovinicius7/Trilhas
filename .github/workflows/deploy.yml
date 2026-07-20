@@ -1,0 +1,51 @@
+# Workflow para deploy automático das Trilhas do Sítio-Escola Geranium no GitHub Pages
+name: Deploy para o GitHub Pages
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+# Define as permissões necessárias para o GITHUB_TOKEN realizar o deploy
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Garante que apenas um deploy aconteça por vez
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22 # Versão estável mais recente para evitar avisos de depreciação
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Compilar o projeto (Build Vite)
+        run: npm run build
+
+      - name: Configurar o GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload do artefato compilado
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist' # Pasta gerada pelo comando de build do Vite
+
+      - name: Deploy para o GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
