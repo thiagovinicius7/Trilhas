@@ -21,8 +21,10 @@ import {
   Save,
   Plus,
   Share2,
-  Tag
+  Tag,
+  X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { TrailPoint, SavedRoadmap } from './types';
 import Header from './components/Header';
 import EducatorProfile from './components/EducatorProfile';
@@ -61,12 +63,14 @@ export default function App() {
   });
   const [webAppUrl, setWebAppUrl] = useState(() => {
     const saved = localStorage.getItem('geranium_trilha_url');
-    if (!saved || saved.includes('_example/exec')) {
+    if (!saved || saved.includes('_example/exec') || saved !== DEFAULT_WEB_APP_URL) {
+      localStorage.setItem('geranium_trilha_url', DEFAULT_WEB_APP_URL);
       return DEFAULT_WEB_APP_URL;
     }
     return saved;
   });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [activeZoomedPhoto, setActiveZoomedPhoto] = useState<{ src: string, title: string } | null>(null);
   
   // Tab control and shared practices
   const [activeTab, setActiveTab] = useState<'meu-roteiro' | 'banco-ideias'>('meu-roteiro');
@@ -224,9 +228,6 @@ export default function App() {
   const savePointToCloudSilently = async (point: TrailPoint) => {
     if (!webAppUrl) return;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds timeout
-
     try {
       const payload = {
         acao: 'salvar',
@@ -250,19 +251,11 @@ export default function App() {
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
-        body: JSON.stringify(payload),
-        signal: controller.signal
+        body: JSON.stringify(payload)
       });
 
       const responseText = await response.text();
-      
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseErr) {
-        console.warn('Erro ao analisar JSON no salvamento silencioso:', responseText);
-        return;
-      }
+      const result = JSON.parse(responseText);
 
       if (result.ok) {
         showStatus(`"${point.nome}" salvo e sincronizado na nuvem!`, 'ok');
@@ -272,9 +265,7 @@ export default function App() {
         console.warn('Erro ao salvar silenciosamente:', result.erro);
       }
     } catch (e) {
-      console.warn('Erro de rede ou timeout ao salvar na nuvem (salvamento silencioso):', e);
-    } finally {
-      clearTimeout(timeoutId);
+      console.warn('Erro ao salvar silenciosamente na nuvem:', e);
     }
   };
 
@@ -355,25 +346,10 @@ export default function App() {
       showStatus('Buscando práticas compartilhadas...', 'info');
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
-
     try {
-      const response = await fetch(`${webAppUrl}?acao=listar`, {
-        signal: controller.signal
-      });
+      const response = await fetch(`${webAppUrl}?acao=listar`);
       const responseText = await response.text();
-      
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseErr) {
-        console.error("Erro ao analisar dados do Google Sheets:", responseText);
-        if (!silent) {
-          showStatus('Resposta inválida do servidor. Verifique a URL do Web App configurado.', 'erro');
-        }
-        return;
-      }
+      const result = JSON.parse(responseText);
 
       if (result.ok && Array.isArray(result.pontos)) {
         const formattedPoints: TrailPoint[] = result.pontos.map((p: any, idx: number) => ({
@@ -408,7 +384,6 @@ export default function App() {
         showStatus('Falha ao conectar com a planilha de práticas compartilhadas.', 'erro');
       }
     } finally {
-      clearTimeout(timeoutId);
       setIsLoadingShared(false);
     }
   };
@@ -507,9 +482,6 @@ export default function App() {
     setStatusMessage('Enviando dados para a nuvem...');
     setStatusType('info');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds timeout for full manual upload
-
     try {
       const payload = {
         acao: 'salvar',
@@ -533,21 +505,11 @@ export default function App() {
         headers: {
           'Content-Type': 'text/plain;charset=utf-8' // Standard Apps Script CORS payload
         },
-        body: JSON.stringify(payload),
-        signal: controller.signal
+        body: JSON.stringify(payload)
       });
 
       const responseText = await response.text();
-      
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseErr) {
-        console.error("Erro ao processar resposta como JSON:", responseText);
-        showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
-        setIsSavingCloud(false);
-        return;
-      }
+      const result = JSON.parse(responseText);
       
       if (result.ok) {
         showStatus(`Roteiro compartilhado com sucesso! Fortalecendo o banco de práticas pedagógicas.`, 'ok');
@@ -561,7 +523,6 @@ export default function App() {
       console.error(err);
       showStatus('Não foi possível conectar à planilha. Verifique sua internet ou a URL configurada.', 'erro');
     } finally {
-      clearTimeout(timeoutId);
       setIsSavingCloud(false);
     }
   };
@@ -578,24 +539,10 @@ export default function App() {
     setStatusMessage('Buscando roteiros compartilhados na planilha...');
     setStatusType('info');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
-
     try {
-      const response = await fetch(`${webAppUrl}?acao=listar`, {
-        signal: controller.signal
-      });
+      const response = await fetch(`${webAppUrl}?acao=listar`);
       const responseText = await response.text();
-      
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseErr) {
-        console.error("Erro ao analisar resposta como JSON na sincronização:", responseText);
-        showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
-        setIsLoadingCloud(false);
-        return;
-      }
+      const result = JSON.parse(responseText);
 
       if (result.ok && Array.isArray(result.pontos)) {
         // Map fetched array to add client-side IDs
@@ -620,7 +567,6 @@ export default function App() {
       console.error(err);
       showStatus('Falha na comunicação com a planilha. Verifique se o Script está publicado como "Qualquer pessoa".', 'erro');
     } finally {
-      clearTimeout(timeoutId);
       setIsLoadingCloud(false);
     }
   };
@@ -980,12 +926,24 @@ export default function App() {
                           {/* Photo or Placeholder */}
                           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#f5f2ed] rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-brand-line shadow-inner">
                             {point.foto ? (
-                              <img
-                                src={point.foto}
-                                alt={point.nome}
-                                className="w-full h-full object-cover animate-fade-in"
-                                referrerPolicy="no-referrer"
-                              />
+                              <button
+                                type="button"
+                                onClick={() => setActiveZoomedPhoto({ src: point.foto!, title: point.nome })}
+                                className="w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus:outline-none overflow-hidden relative group/shared-photo"
+                                title="Clique para ampliar a foto"
+                              >
+                                <img
+                                  src={point.foto}
+                                  alt={point.nome}
+                                  className="w-full h-full object-cover animate-fade-in transition-transform group-hover/shared-photo:scale-110 duration-500"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover/shared-photo:bg-black/10 transition-colors flex items-center justify-center">
+                                  <span className="text-[8px] text-white bg-black/60 px-1 py-0.5 rounded opacity-0 group-hover/shared-photo:opacity-100 transition-opacity font-sans font-bold uppercase">
+                                    Ampliar
+                                  </span>
+                                </div>
+                              </button>
                             ) : (
                               <span className="text-[10px] italic text-[#8c8878] font-serif">Sem foto</span>
                             )}
@@ -1080,6 +1038,57 @@ export default function App() {
           url={webAppUrl}
           onSaveUrl={handleSaveUrl}
         />
+
+        {/* Retro-Styled Lightbox Modal to Expand Image for the shared gallery */}
+        <AnimatePresence>
+          {activeZoomedPhoto && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveZoomedPhoto(null)}
+              className="fixed inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-4 md:p-8 cursor-zoom-out no-print"
+            >
+              {/* Close button with high visibility */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveZoomedPhoto(null);
+                }}
+                className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full border border-white/20 transition-all cursor-pointer shadow-lg hover:scale-105"
+                title="Fechar"
+                aria-label="Fechar visualização"
+              >
+                <X size={20} />
+              </button>
+
+              {/* Lightbox main panel with beautiful frame */}
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative max-w-4xl max-h-[85vh] bg-brand-paper p-3 rounded-2xl border-2 border-brand-line shadow-2xl overflow-hidden flex flex-col"
+              >
+                <img
+                  src={activeZoomedPhoto.src}
+                  alt={activeZoomedPhoto.title}
+                  className="max-w-full max-h-[70vh] object-contain rounded-xl select-none"
+                  referrerPolicy="no-referrer"
+                />
+                
+                {/* Photo Legend */}
+                <div className="mt-3 px-2 flex flex-col items-center text-center gap-1">
+                  <h4 className="font-serif font-bold text-base text-brand-green leading-tight">
+                    {activeZoomedPhoto.title}
+                  </h4>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Helpful instructions footer */}
         <footer className="mt-12 text-center text-xs text-brand-terra/40 border-t border-brand-line/40 pt-4 max-w-lg mx-auto leading-relaxed no-print">
