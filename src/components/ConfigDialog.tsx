@@ -38,7 +38,15 @@ function doPost(e) {
 
     if (corpo.acao === 'salvar' && Array.isArray(corpo.pontos)) {
       corpo.pontos.forEach(function (p) {
-        aba.appendRow([
+        var rowNum = null;
+        if (p.id && typeof p.id === 'string' && p.id.indexOf('row-') === 0) {
+          var num = parseInt(p.id.substring(4), 10);
+          if (!isNaN(num) && num >= 2 && num <= aba.getLastRow()) {
+            rowNum = num;
+          }
+        }
+
+        var rowValues = [
           p.data || new Date().toISOString(),
           p.nome || '',
           p.local || '',
@@ -47,7 +55,13 @@ function doPost(e) {
           p.autor || '',
           p.grupo || '',
           p.foto || '' // Salva a foto compactada em Base64
-        ]);
+        ];
+
+        if (rowNum) {
+          aba.getRange(rowNum, 1, 1, 8).setValues([rowValues]);
+        } else {
+          aba.appendRow(rowValues);
+        }
       });
       return resposta_({ ok: true, salvos: corpo.pontos.length });
     }
@@ -66,8 +80,9 @@ function doGet(e) {
 
     const pontos = linhas
       .filter(function (linha) { return linha[1]; }) // precisa ter nome
-      .map(function (linha) {
+      .map(function (linha, index) {
         return {
+          id: 'row-' + (index + 2),
           data: linha[0],
           nome: linha[1],
           local: linha[2],

@@ -252,11 +252,51 @@ export default function App() {
       const result = await response.json();
       if (result.ok) {
         showStatus(`"${point.nome}" salvo e sincronizado na nuvem!`, 'ok');
+        // Retrieve newly assigned row IDs silently in the background
+        loadSharedPoints(true);
       } else {
         console.warn('Erro ao salvar silenciosamente:', result.erro);
       }
     } catch (e) {
       console.warn('Erro de rede ao salvar na nuvem (offline):', e);
+    }
+  };
+
+  const syncLocalIDsWithCloud = (cloudPoints: TrailPoint[]) => {
+    let hasChanges = false;
+    const updatedPontos = pontos.map(localPoint => {
+      // If it already has a row-X ID, keep it
+      if (localPoint.id.startsWith('row-')) {
+        return localPoint;
+      }
+      // Match with cloud points by ignoring surrounding spaces and cases
+      const match = cloudPoints.find(cp => 
+        cp.nome.trim().toLowerCase() === localPoint.nome.trim().toLowerCase() && 
+        cp.autor.trim().toLowerCase() === localPoint.autor.trim().toLowerCase() && 
+        cp.descricao.trim().toLowerCase() === localPoint.descricao.trim().toLowerCase()
+      );
+      if (match) {
+        hasChanges = true;
+        return { ...localPoint, id: match.id };
+      }
+      return localPoint;
+    });
+
+    if (hasChanges) {
+      setPontos(updatedPontos);
+      localStorage.setItem('geranium_trilha_pontos', JSON.stringify(updatedPontos));
+
+      // Synchronize in saved roadmaps list as well if there is an active roadmap
+      if (activeRoadmapId) {
+        const updatedRoadmaps = savedRoadmaps.map(rm => {
+          if (rm.id === activeRoadmapId) {
+            return { ...rm, pontos: updatedPontos };
+          }
+          return rm;
+        });
+        setSavedRoadmaps(updatedRoadmaps);
+        localStorage.setItem('geranium_roteiros_salvos', JSON.stringify(updatedRoadmaps));
+      }
     }
   };
 
@@ -316,8 +356,12 @@ export default function App() {
           foto: p.foto || undefined
         }));
 
-        // Reverse to show the most recent first!
-        setSharedPoints(formattedPoints.reverse());
+        // Reverse to show the most recent first
+        setSharedPoints([...formattedPoints].reverse());
+
+        // Sync local points' client-side IDs with Google Sheets row-X IDs
+        syncLocalIDsWithCloud(formattedPoints);
+
         if (!silent) {
           showStatus(`${formattedPoints.length} práticas carregadas do mural!`, 'ok');
         }
