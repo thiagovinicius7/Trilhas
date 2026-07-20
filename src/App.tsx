@@ -224,6 +224,9 @@ export default function App() {
   const savePointToCloudSilently = async (point: TrailPoint) => {
     if (!webAppUrl) return;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds timeout
+
     try {
       const payload = {
         acao: 'salvar',
@@ -247,9 +250,20 @@ export default function App() {
         headers: {
           'Content-Type': 'text/plain;charset=utf-8'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
-      const result = await response.json();
+
+      const responseText = await response.text();
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.warn('Erro ao analisar JSON no salvamento silencioso:', responseText);
+        return;
+      }
+
       if (result.ok) {
         showStatus(`"${point.nome}" salvo e sincronizado na nuvem!`, 'ok');
         // Retrieve newly assigned row IDs silently in the background
@@ -258,7 +272,9 @@ export default function App() {
         console.warn('Erro ao salvar silenciosamente:', result.erro);
       }
     } catch (e) {
-      console.warn('Erro de rede ao salvar na nuvem (offline):', e);
+      console.warn('Erro de rede ou timeout ao salvar na nuvem (salvamento silencioso):', e);
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -339,9 +355,29 @@ export default function App() {
       showStatus('Buscando práticas compartilhadas...', 'info');
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+
     try {
-      const response = await fetch(`${webAppUrl}?acao=listar`);
-      const result = await response.json();
+      const response = await fetch(`${webAppUrl}?acao=listar`, {
+        signal: controller.signal
+      });
+      const responseText = await response.text();
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error("Erro ao analisar dados do Google Sheets:", responseText);
+        if (!silent) {
+          if (responseText.includes("unable to open the file") || responseText.includes("Page Not Found") || responseText.includes("errorMessage")) {
+            showStatus('A planilha pública atingiu a cota diária do Google ou foi movida. Configure sua própria planilha (⚙️) para usar sem limites!', 'erro');
+          } else {
+            showStatus('Resposta inválida do servidor Google. Verifique a URL do Web App configurado.', 'erro');
+          }
+        }
+        return;
+      }
 
       if (result.ok && Array.isArray(result.pontos)) {
         const formattedPoints: TrailPoint[] = result.pontos.map((p: any, idx: number) => ({
@@ -370,12 +406,17 @@ export default function App() {
           showStatus(`Erro ao buscar dados: ${result.erro || 'A planilha não retornou paradas válidas'}`, 'erro');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       if (!silent) {
-        showStatus('Falha ao conectar com a planilha de práticas compartilhadas.', 'erro');
+        if (err.name === 'AbortError') {
+          showStatus('Tempo de busca esgotado. A conexão com o Google Sheets falhou ou a rede está instável.', 'erro');
+        } else {
+          showStatus('Falha ao conectar com a planilha de práticas compartilhadas.', 'erro');
+        }
       }
     } finally {
+      clearTimeout(timeoutId);
       setIsLoadingShared(false);
     }
   };
@@ -474,6 +515,9 @@ export default function App() {
     setStatusMessage('Enviando dados para a nuvem...');
     setStatusType('info');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 seconds timeout for full manual upload
+
     try {
       const payload = {
         acao: 'salvar',
@@ -497,10 +541,25 @@ export default function App() {
         headers: {
           'Content-Type': 'text/plain;charset=utf-8' // Standard Apps Script CORS payload
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error("Erro ao processar resposta como JSON:", responseText);
+        if (responseText.includes("unable to open the file") || responseText.includes("Page Not Found") || responseText.includes("errorMessage")) {
+          showStatus('O Google Drive não conseguiu abrir a planilha pública devido a limites de cotas. Clique na engrenagem (⚙️) no topo para configurar sua própria planilha!', 'erro');
+        } else {
+          showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
+        }
+        setIsSavingCloud(false);
+        return;
+      }
       
       if (result.ok) {
         showStatus(`Roteiro compartilhado com sucesso! Fortalecendo o banco de práticas pedagógicas.`, 'ok');
@@ -510,10 +569,15 @@ export default function App() {
       } else {
         showStatus(`Falha ao compartilhar: ${result.erro || 'Erro desconhecido'}`, 'erro');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showStatus('Não foi possível conectar à planilha. Verifique sua internet ou a URL configurada.', 'erro');
+      if (err.name === 'AbortError') {
+        showStatus('A conexão expirou. O Google Sheets demorou demais para responder. Tente remover fotos pesadas ou configure sua própria planilha (⚙️).', 'erro');
+      } else {
+        showStatus('Não foi possível conectar à planilha. Verifique sua internet ou a URL configurada.', 'erro');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsSavingCloud(false);
     }
   };
@@ -530,9 +594,28 @@ export default function App() {
     setStatusMessage('Buscando roteiros compartilhados na planilha...');
     setStatusType('info');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+
     try {
-      const response = await fetch(`${webAppUrl}?acao=listar`);
-      const result = await response.json();
+      const response = await fetch(`${webAppUrl}?acao=listar`, {
+        signal: controller.signal
+      });
+      const responseText = await response.text();
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error("Erro ao analisar resposta como JSON na sincronização:", responseText);
+        if (responseText.includes("unable to open the file") || responseText.includes("Page Not Found") || responseText.includes("errorMessage")) {
+          showStatus('A planilha pública atingiu o limite de acessos do Google. Configure sua própria planilha (⚙️) para sincronizar sem limites!', 'erro');
+        } else {
+          showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
+        }
+        setIsLoadingCloud(false);
+        return;
+      }
 
       if (result.ok && Array.isArray(result.pontos)) {
         // Map fetched array to add client-side IDs
@@ -553,10 +636,15 @@ export default function App() {
       } else {
         showStatus(`Erro ao buscar dados: ${result.erro || 'A planilha não retornou paradas válida'}`, 'erro');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showStatus('Falha na comunicação com a planilha. Verifique se o Script está publicado como "Qualquer pessoa".', 'erro');
+      if (err.name === 'AbortError') {
+        showStatus('Tempo esgotado ao buscar dados na nuvem. A conexão falhou ou a rede está instável.', 'erro');
+      } else {
+        showStatus('Falha na comunicação com a planilha. Verifique se o Script está publicado como "Qualquer pessoa".', 'erro');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsLoadingCloud(false);
     }
   };
@@ -800,6 +888,21 @@ export default function App() {
         {/* Tab 2: Shared Practice Pool (Hidden when printing) */}
         <div className={`no-print ${activeTab === 'banco-ideias' ? 'block animate-in fade-in duration-200' : 'hidden'}`}>
           <div className="space-y-4">
+            {webAppUrl === DEFAULT_WEB_APP_URL && (
+              <div className="bg-brand-ochre/10 border border-brand-ochre/35 rounded-2xl p-4 text-xs space-y-1.5 text-brand-terra">
+                <span className="font-bold flex items-center gap-1.5 text-brand-green font-serif italic text-sm">
+                  <Cloud size={14} className="text-brand-ochre animate-bounce" />
+                  Sincronização com Planilha Pública
+                </span>
+                <p className="text-brand-terra/80 leading-relaxed">
+                  Você está conectado ao <strong>Banco de Práticas Público</strong> do Sítio-Escola Geranium. Devido ao grande volume de acessos de diversos educadores, as cotas diárias de escrita do Google podem expirar temporariamente (causando lentidão ou erros de envio). 
+                </p>
+                <p className="text-brand-terra/80 leading-relaxed">
+                  💡 Para salvar e sincronizar suas trilhas com segurança e autonomia total, recomendamos fortemente configurar seu próprio Google Sheet privado! Clique na engrenagem <strong>⚙️ Configurações</strong> no topo e siga o passo a passo de 1 minuto.
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <input
                 type="text"
