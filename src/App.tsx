@@ -22,7 +22,9 @@ import {
   Plus,
   Share2,
   Tag,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TrailPoint, SavedRoadmap } from './types';
@@ -94,6 +96,7 @@ export default function App() {
   });
   const [roadmapNameInput, setRoadmapNameInput] = useState('');
   const [isSavePanelOpen, setIsSavePanelOpen] = useState(false);
+  const [isRoadmapsExpanded, setIsRoadmapsExpanded] = useState(false);
 
   // Status feedback states
   const [statusMessage, setStatusMessage] = useState('');
@@ -173,6 +176,7 @@ export default function App() {
     setSavedRoadmaps(updatedRoadmaps);
     localStorage.setItem('geranium_roteiros_salvos', JSON.stringify(updatedRoadmaps));
     setIsSavePanelOpen(false);
+    setIsRoadmapsExpanded(true);
   };
 
   const handleCreateNewRoadmap = () => {
@@ -589,10 +593,20 @@ export default function App() {
         {/* Step 3: Gerenciador de Roteiros Locais (Offline e Confiável) */}
         <div className="no-print mt-4 mb-6 bg-brand-paper border border-brand-line rounded-[28px] p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-serif font-bold text-sm text-brand-green flex items-center gap-2">
-              <FolderOpen size={16} className="text-brand-ochre animate-pulse" />
+            <button
+              type="button"
+              onClick={() => setIsRoadmapsExpanded(!isRoadmapsExpanded)}
+              className="font-serif font-bold text-sm text-brand-green flex items-center gap-2 hover:opacity-80 transition-all focus:outline-none cursor-pointer"
+              title={isRoadmapsExpanded ? "Clique para recolher" : "Clique para expandir"}
+            >
+              <FolderOpen size={16} className="text-brand-ochre" />
               <span>Meus Roteiros Salvos</span>
-            </h3>
+              {isRoadmapsExpanded ? (
+                <ChevronUp size={14} className="text-brand-ochre transition-transform" />
+              ) : (
+                <ChevronDown size={14} className="text-brand-ochre animate-pulse" />
+              )}
+            </button>
             <button
               type="button"
               onClick={handleCreateNewRoadmap}
@@ -603,98 +617,110 @@ export default function App() {
             </button>
           </div>
 
-          {/* Active Roadmap Info */}
-          <div className="bg-brand-parchment/65 border border-brand-line/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <span className="text-[10px] uppercase font-bold text-[#8c8878] tracking-wider block">Roteiro Ativo</span>
-              <span className="font-serif font-bold text-sm text-brand-green leading-snug">
-                {activeRoadmapId 
-                  ? savedRoadmaps.find(rm => rm.id === activeRoadmapId)?.nome || "Roteiro Selecionado"
-                  : "Roteiro em Branco / Não Salvo"
-                }
-              </span>
-              <span className="text-[11px] text-brand-terra/60 block">
-                {pontos.length} {pontos.length === 1 ? 'parada registrada' : 'paradas registradas'}
-              </span>
-            </div>
-
-            {/* Save panel toggle or inline form */}
-            {!isSavePanelOpen ? (
-              <button
-                type="button"
-                onClick={() => {
-                  const currentName = activeRoadmapId 
-                    ? savedRoadmaps.find(rm => rm.id === activeRoadmapId)?.nome || '' 
-                    : '';
-                  setRoadmapNameInput(currentName);
-                  setIsSavePanelOpen(true);
-                }}
-                className="self-start sm:self-center bg-[#d4a373] hover:bg-[#b58656] text-white font-bold text-xs px-4 py-2.5 rounded-full flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+          <AnimatePresence initial={false}>
+            {isRoadmapsExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="overflow-hidden space-y-4 pt-1"
               >
-                <Save size={13} />
-                <span>{activeRoadmapId ? 'Atualizar Roteiro' : 'Salvar Roteiro'}</span>
-              </button>
-            ) : (
-              <div className="flex-1 max-w-sm flex items-center gap-2">
-                <input
-                  type="text"
-                  value={roadmapNameInput}
-                  onChange={(e) => setRoadmapNameInput(e.target.value)}
-                  placeholder="Nome do roteiro (ex: Aula do 5º Ano)"
-                  className="flex-1 bg-brand-paper border border-[#e6e2d3] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-green text-brand-terra"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleSaveRoadmapLocally(roadmapNameInput)}
-                  className="bg-brand-green hover:bg-[#4a4a35] text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer"
-                >
-                  Salvar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSavePanelOpen(false)}
-                  className="text-xs text-brand-terra/50 hover:text-brand-terra font-semibold px-2"
-                >
-                  Cancelar
-                </button>
-              </div>
-            )}
-          </div>
+                {/* Active Roadmap Info */}
+                <div className="bg-brand-parchment/65 border border-brand-line/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-[#8c8878] tracking-wider block">Roteiro Ativo</span>
+                    <span className="font-serif font-bold text-sm text-brand-green leading-snug">
+                      {activeRoadmapId 
+                        ? savedRoadmaps.find(rm => rm.id === activeRoadmapId)?.nome || "Roteiro Selecionado"
+                        : "Roteiro em Branco / Não Salvo"
+                      }
+                    </span>
+                    <span className="text-[11px] text-brand-terra/60 block">
+                      {pontos.length} {pontos.length === 1 ? 'parada registrada' : 'paradas registradas'}
+                    </span>
+                  </div>
 
-          {/* List of saved roadmaps */}
-          {savedRoadmaps.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-brand-line/40">
-              <span className="text-[10px] uppercase font-bold text-[#8c8878] tracking-wider block">Histórico de Roteiros</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
-                {savedRoadmaps.map((rm) => (
-                  <div
-                    key={rm.id}
-                    onClick={() => handleLoadRoadmap(rm.id)}
-                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-3 ${
-                      activeRoadmapId === rm.id
-                        ? 'bg-[#f0f4ec] border-brand-green/40 text-brand-green font-medium'
-                        : 'bg-brand-parchment/30 hover:bg-[#fbfaf8] border-brand-line/50 text-brand-terra/80 hover:text-brand-green'
-                    }`}
-                  >
-                    <div className="truncate pr-2">
-                      <p className="text-xs font-bold truncate leading-tight">{rm.nome}</p>
-                      <p className="text-[10px] text-brand-terra/50 mt-0.5">
-                        {rm.pontos.length} {rm.pontos.length === 1 ? 'parada' : 'paradas'} · {new Date(rm.dataCriacao).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
+                  {/* Save panel toggle or inline form */}
+                  {!isSavePanelOpen ? (
                     <button
                       type="button"
-                      onClick={(e) => handleDeleteSavedRoadmap(rm.id, e)}
-                      className="text-brand-terra/40 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors shrink-0"
-                      title="Excluir roteiro"
+                      onClick={() => {
+                        const currentName = activeRoadmapId 
+                          ? savedRoadmaps.find(rm => rm.id === activeRoadmapId)?.nome || '' 
+                          : '';
+                        setRoadmapNameInput(currentName);
+                        setIsSavePanelOpen(true);
+                      }}
+                      className="self-start sm:self-center bg-[#d4a373] hover:bg-[#b58656] text-white font-bold text-xs px-4 py-2.5 rounded-full flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     >
-                      <Trash2 size={13} />
+                      <Save size={13} />
+                      <span>{activeRoadmapId ? 'Atualizar Roteiro' : 'Salvar Roteiro'}</span>
                     </button>
+                  ) : (
+                    <div className="flex-1 max-w-sm flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={roadmapNameInput}
+                        onChange={(e) => setRoadmapNameInput(e.target.value)}
+                        placeholder="Nome do roteiro (ex: Aula do 5º Ano)"
+                        className="flex-1 bg-brand-paper border border-[#e6e2d3] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-green text-brand-terra"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveRoadmapLocally(roadmapNameInput)}
+                        className="bg-brand-green hover:bg-[#4a4a35] text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsSavePanelOpen(false)}
+                        className="text-xs text-brand-terra/50 hover:text-brand-terra font-semibold px-2"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* List of saved roadmaps */}
+                {savedRoadmaps.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-brand-line/40">
+                    <span className="text-[10px] uppercase font-bold text-[#8c8878] tracking-wider block">Histórico de Roteiros</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+                      {savedRoadmaps.map((rm) => (
+                        <div
+                          key={rm.id}
+                          onClick={() => handleLoadRoadmap(rm.id)}
+                          className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex items-center justify-between gap-3 ${
+                            activeRoadmapId === rm.id
+                              ? 'bg-[#f0f4ec] border-brand-green/40 text-brand-green font-medium'
+                              : 'bg-brand-parchment/30 hover:bg-[#fbfaf8] border-brand-line/50 text-brand-terra/80 hover:text-brand-green'
+                          }`}
+                        >
+                          <div className="truncate pr-2">
+                            <p className="text-xs font-bold truncate leading-tight">{rm.nome}</p>
+                            <p className="text-[10px] text-brand-terra/50 mt-0.5">
+                              {rm.pontos.length} {rm.pontos.length === 1 ? 'parada' : 'paradas'} · {new Date(rm.dataCriacao).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteSavedRoadmap(rm.id, e)}
+                            className="text-brand-terra/40 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors shrink-0"
+                            title="Excluir roteiro"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Step 2: Form to Add Points (excludes Autor/Grupo fields) */}
