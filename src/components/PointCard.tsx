@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Tag, FileText, Compass, Trash2, Edit2, ChevronUp, ChevronDown, Check, X, Camera, Calendar, User, Users } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { TrailPoint } from '../types';
 import { formatDate, compressImage } from '../utils';
 
@@ -29,6 +30,7 @@ export default function PointCard({
   onMoveDown,
 }: PointCardProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [nome, setNome] = useState(point.nome);
   const [local, setLocal] = useState(point.local);
   const [descricao, setDescricao] = useState(point.descricao);
@@ -204,14 +206,26 @@ export default function PointCard({
       ) : (
         <div className="flex flex-col sm:flex-row gap-6 items-start pr-12">
           {/* Retro Photo Container on the Left */}
-          <div className="w-24 h-24 bg-brand-line/50 rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-brand-line shadow-inner">
+          <div className="w-24 h-24 bg-brand-line/50 rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-brand-line shadow-inner group/photo">
             {point.foto ? (
-              <img
-                src={point.foto}
-                alt={point.nome}
-                className="w-full h-full object-cover transition-transform hover:scale-110 duration-500"
-                referrerPolicy="no-referrer"
-              />
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(true)}
+                className="w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus:outline-none overflow-hidden relative"
+                title="Clique para ampliar a foto"
+              >
+                <img
+                  src={point.foto}
+                  alt={point.nome}
+                  className="w-full h-full object-cover transition-transform group-hover/photo:scale-110 duration-500"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/10 transition-colors flex items-center justify-center">
+                  <span className="text-[9px] text-white bg-black/60 px-1.5 py-0.5 rounded opacity-0 group-hover/photo:opacity-100 transition-opacity font-sans font-bold">
+                    AMPLIAR
+                  </span>
+                </div>
+              </button>
             ) : (
               <div className="text-center italic text-[#8c8878] text-xs font-serif select-none">
                 Sem Foto
@@ -328,6 +342,70 @@ export default function PointCard({
           </div>
         </div>
       )}
+
+      {/* Retro-Styled Lightbox Modal to Expand Image */}
+      <AnimatePresence>
+        {isLightboxOpen && point.foto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsLightboxOpen(false)}
+            className="fixed inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-4 md:p-8 cursor-zoom-out no-print"
+          >
+            {/* Close button with high visibility */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLightboxOpen(false);
+              }}
+              className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white p-2.5 rounded-full border border-white/20 transition-all cursor-pointer shadow-lg hover:scale-105"
+              title="Fechar"
+              aria-label="Fechar visualização"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Lightbox main panel with beautiful frame */}
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl max-h-[85vh] bg-brand-paper p-3 rounded-2xl border-2 border-brand-line shadow-2xl overflow-hidden flex flex-col"
+            >
+              <img
+                src={point.foto}
+                alt={point.nome}
+                className="max-w-full max-h-[70vh] object-contain rounded-xl select-none"
+                referrerPolicy="no-referrer"
+              />
+              
+              {/* Photo Legend & Metadata */}
+              <div className="mt-3 px-2 flex flex-col items-center text-center gap-1">
+                <h4 className="font-serif font-bold text-base text-brand-green leading-tight">
+                  {point.nome}
+                </h4>
+                <div className="flex flex-wrap justify-center gap-2 items-center text-[10px] text-[#8c8878] font-mono mt-0.5">
+                  {point.local && (
+                    <span className="bg-[#f0f4ec] text-[#5b8241] font-bold px-2 py-0.5 rounded-full border border-[#e6e2d3]/50">
+                      {point.local}
+                    </span>
+                  )}
+                  {point.autor && (
+                    <span>• {point.autor}</span>
+                  )}
+                  {point.grupo && (
+                    <span>• {point.grupo}</span>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </article>
   );
 }
