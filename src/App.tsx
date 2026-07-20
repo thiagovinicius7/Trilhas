@@ -370,11 +370,7 @@ export default function App() {
       } catch (parseErr) {
         console.error("Erro ao analisar dados do Google Sheets:", responseText);
         if (!silent) {
-          if (responseText.includes("unable to open the file") || responseText.includes("Page Not Found") || responseText.includes("errorMessage")) {
-            showStatus('A planilha pública atingiu a cota diária do Google ou foi movida. Configure sua própria planilha (⚙️) para usar sem limites!', 'erro');
-          } else {
-            showStatus('Resposta inválida do servidor Google. Verifique a URL do Web App configurado.', 'erro');
-          }
+          showStatus('Resposta inválida do servidor. Verifique a URL do Web App configurado.', 'erro');
         }
         return;
       }
@@ -409,11 +405,7 @@ export default function App() {
     } catch (err: any) {
       console.error(err);
       if (!silent) {
-        if (err.name === 'AbortError') {
-          showStatus('Tempo de busca esgotado. A conexão com o Google Sheets falhou ou a rede está instável.', 'erro');
-        } else {
-          showStatus('Falha ao conectar com a planilha de práticas compartilhadas.', 'erro');
-        }
+        showStatus('Falha ao conectar com a planilha de práticas compartilhadas.', 'erro');
       }
     } finally {
       clearTimeout(timeoutId);
@@ -552,11 +544,7 @@ export default function App() {
         result = JSON.parse(responseText);
       } catch (parseErr) {
         console.error("Erro ao processar resposta como JSON:", responseText);
-        if (responseText.includes("unable to open the file") || responseText.includes("Page Not Found") || responseText.includes("errorMessage")) {
-          showStatus('O Google Drive não conseguiu abrir a planilha pública devido a limites de cotas. Clique na engrenagem (⚙️) no topo para configurar sua própria planilha!', 'erro');
-        } else {
-          showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
-        }
+        showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
         setIsSavingCloud(false);
         return;
       }
@@ -571,11 +559,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.name === 'AbortError') {
-        showStatus('A conexão expirou. O Google Sheets demorou demais para responder. Tente remover fotos pesadas ou configure sua própria planilha (⚙️).', 'erro');
-      } else {
-        showStatus('Não foi possível conectar à planilha. Verifique sua internet ou a URL configurada.', 'erro');
-      }
+      showStatus('Não foi possível conectar à planilha. Verifique sua internet ou a URL configurada.', 'erro');
     } finally {
       clearTimeout(timeoutId);
       setIsSavingCloud(false);
@@ -608,11 +592,7 @@ export default function App() {
         result = JSON.parse(responseText);
       } catch (parseErr) {
         console.error("Erro ao analisar resposta como JSON na sincronização:", responseText);
-        if (responseText.includes("unable to open the file") || responseText.includes("Page Not Found") || responseText.includes("errorMessage")) {
-          showStatus('A planilha pública atingiu o limite de acessos do Google. Configure sua própria planilha (⚙️) para sincronizar sem limites!', 'erro');
-        } else {
-          showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
-        }
+        showStatus('Resposta inválida do servidor Google Sheets. Verifique a URL do Web App configurado.', 'erro');
         setIsLoadingCloud(false);
         return;
       }
@@ -638,11 +618,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.name === 'AbortError') {
-        showStatus('Tempo esgotado ao buscar dados na nuvem. A conexão falhou ou a rede está instável.', 'erro');
-      } else {
-        showStatus('Falha na comunicação com a planilha. Verifique se o Script está publicado como "Qualquer pessoa".', 'erro');
-      }
+      showStatus('Falha na comunicação com a planilha. Verifique se o Script está publicado como "Qualquer pessoa".', 'erro');
     } finally {
       clearTimeout(timeoutId);
       setIsLoadingCloud(false);
@@ -888,21 +864,6 @@ export default function App() {
         {/* Tab 2: Shared Practice Pool (Hidden when printing) */}
         <div className={`no-print ${activeTab === 'banco-ideias' ? 'block animate-in fade-in duration-200' : 'hidden'}`}>
           <div className="space-y-4">
-            {webAppUrl === DEFAULT_WEB_APP_URL && (
-              <div className="bg-brand-ochre/10 border border-brand-ochre/35 rounded-2xl p-4 text-xs space-y-1.5 text-brand-terra">
-                <span className="font-bold flex items-center gap-1.5 text-brand-green font-serif italic text-sm">
-                  <Cloud size={14} className="text-brand-ochre animate-bounce" />
-                  Sincronização com Planilha Pública
-                </span>
-                <p className="text-brand-terra/80 leading-relaxed">
-                  Você está conectado ao <strong>Banco de Práticas Público</strong> do Sítio-Escola Geranium. Devido ao grande volume de acessos de diversos educadores, as cotas diárias de escrita do Google podem expirar temporariamente (causando lentidão ou erros de envio). 
-                </p>
-                <p className="text-brand-terra/80 leading-relaxed">
-                  💡 Para salvar e sincronizar suas trilhas com segurança e autonomia total, recomendamos fortemente configurar seu próprio Google Sheet privado! Clique na engrenagem <strong>⚙️ Configurações</strong> no topo e siga o passo a passo de 1 minuto.
-                </p>
-              </div>
-            )}
-
             <div className="flex gap-2">
               <input
                 type="text"
