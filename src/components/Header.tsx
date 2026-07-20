@@ -68,8 +68,8 @@ export default function Header({ onOpenConfig }: HeaderProps) {
         </p>
 
         {/* Small pedagogical quote for atmospheric alignment */}
-        <div className="mt-4 bg-black/10 px-4 py-1.5 rounded-full text-xs text-brand-parchment/80 max-w-md tracking-wide">
-          "Não se prepara a democracia de amanhã pela autocracia. Prepara-se pela cooperação." — C. Freinet
+        <div className="mt-4 bg-black/10 px-4 py-1.5 rounded-full text-xs text-brand-parchment/80 max-w-lg tracking-wide">
+          "Não se prepara a democracia de amanhã pela autocracia. Prepara-se pela cooperação." — Inspirada em uma invariante de Freinet
         </div>
       </div>
     </header>
