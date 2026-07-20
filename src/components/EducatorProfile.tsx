@@ -102,7 +102,7 @@ export default function EducatorProfile({ autor, grupo, onChange }: EducatorProf
             </div>
             <div>
               <div className="text-xs font-mono uppercase tracking-wider text-brand-leaf font-bold">
-                Educador/a Mapeando a Trilha
+                Identificação
               </div>
               <h3 className="font-serif font-bold text-lg text-brand-green">
                 {autor || 'Não especificado'}
