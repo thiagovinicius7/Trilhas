@@ -80,6 +80,7 @@ export default function App() {
   const [isLoadingShared, setIsLoadingShared] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilterTag, setSelectedFilterTag] = useState<string | null>(null);
+  const [selectedFilterSpace, setSelectedFilterSpace] = useState<string | null>(null);
 
   // Saved Roadmaps (Roteiros Salvos) state hooks
   const [savedRoadmaps, setSavedRoadmaps] = useState<SavedRoadmap[]>(() => {
@@ -143,6 +144,18 @@ export default function App() {
 
     return Array.from(namesSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [pontos, sharedPoints, savedRoadmaps]);
+
+  // Obter todos os espaços (nomes de pontos) únicos do Banco de Práticas para o filtro por espaço
+  const uniqueSpaces = useMemo(() => {
+    const spacesSet = new Set<string>();
+    sharedPoints.forEach(p => {
+      if (p.nome) {
+        const trimmed = p.nome.trim();
+        if (trimmed) spacesSet.add(trimmed);
+      }
+    });
+    return Array.from(spacesSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [sharedPoints]);
 
   // Sync state helpers that update localStorage
   const updatePontosAndStore = (newPontos: TrailPoint[]) => {
@@ -892,46 +905,87 @@ export default function App() {
               </button>
             </div>
 
-            {/* Clickable Quick Tag Filters */}
+            {/* Clickable Quick Tag & Space Filters */}
             {sharedPoints.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 text-xs bg-[#fbfaf8] border border-brand-line/40 p-2.5 rounded-2xl">
-                <span className="text-[10px] uppercase font-bold text-[#8c8878] mr-1 flex items-center gap-1">
-                  <Tag size={10} className="text-brand-ochre" />
-                  Filtrar por Tag:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedFilterTag(null)}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                    selectedFilterTag === null
-                      ? 'bg-brand-ochre text-white border-brand-ochre shadow-sm'
-                      : 'bg-[#f9f8f6] text-[#8c8878] border-[#e6e2d3] hover:bg-[#f5f2ed]'
-                  }`}
-                >
-                  Todas
-                </button>
-                {Array.from(new Set([
-                  'infantil', 'fundamental', 'contraturno',
-                  ...sharedPoints.flatMap(p => 
-                    p.local ? p.local.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : []
-                  )
-                ])).map((tag) => {
-                  const isSelected = selectedFilterTag === tag;
-                  return (
+              <div className="space-y-3 bg-[#fbfaf8] border border-brand-line/40 p-3.5 rounded-2xl">
+                {/* Row 1: Tags */}
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-[#8c8878] mr-1 flex items-center gap-1 shrink-0">
+                    <Tag size={10} className="text-brand-ochre" />
+                    Filtrar por Tag:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFilterTag(null)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                      selectedFilterTag === null
+                        ? 'bg-brand-ochre text-white border-brand-ochre shadow-sm'
+                        : 'bg-[#f9f8f6] text-[#8c8878] border-[#e6e2d3] hover:bg-[#f5f2ed]'
+                    }`}
+                  >
+                    Todas
+                  </button>
+                  {Array.from(new Set([
+                    'infantil', 'fundamental', 'contraturno',
+                    ...sharedPoints.flatMap(p => 
+                      p.local ? p.local.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : []
+                    )
+                  ])).map((tag) => {
+                    const isSelected = selectedFilterTag === tag;
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setSelectedFilterTag(isSelected ? null : tag)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer capitalize ${
+                          isSelected
+                            ? 'bg-brand-green text-white border-brand-green shadow-sm'
+                            : 'bg-[#f9f8f6] text-[#8c8878] border-[#e6e2d3] hover:bg-[#f5f2ed]'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Row 2: Spaces */}
+                {uniqueSpaces.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs pt-2.5 border-t border-brand-line/30">
+                    <span className="text-[10px] uppercase font-bold text-[#8c8878] mr-1 flex items-center gap-1 shrink-0">
+                      <Compass size={10} className="text-brand-green" />
+                      Filtrar por Espaço:
+                    </span>
                     <button
-                      key={tag}
                       type="button"
-                      onClick={() => setSelectedFilterTag(isSelected ? null : tag)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer capitalize ${
-                        isSelected
-                          ? 'bg-brand-green text-white border-brand-green shadow-sm'
+                      onClick={() => setSelectedFilterSpace(null)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                        selectedFilterSpace === null
+                          ? 'bg-brand-ochre text-white border-brand-ochre shadow-sm'
                           : 'bg-[#f9f8f6] text-[#8c8878] border-[#e6e2d3] hover:bg-[#f5f2ed]'
                       }`}
                     >
-                      {tag}
+                      Todos os Espaços
                     </button>
-                  );
-                })}
+                    {uniqueSpaces.map((space) => {
+                      const isSelected = selectedFilterSpace === space;
+                      return (
+                        <button
+                          key={space}
+                          type="button"
+                          onClick={() => setSelectedFilterSpace(isSelected ? null : space)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-brand-green text-white border-brand-green shadow-sm'
+                              : 'bg-[#f9f8f6] text-[#8c8878] border-[#e6e2d3] hover:bg-[#f5f2ed]'
+                          }`}
+                        >
+                          {space}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -969,8 +1023,11 @@ export default function App() {
                     
                     const matchesTag = !selectedFilterTag || 
                       normalizeSearchText(p.local).split(',').map(t => t.trim().toLowerCase()).includes(normalizeSearchText(selectedFilterTag));
+                    
+                    const matchesSpace = !selectedFilterSpace ||
+                      (p.nome && p.nome.trim().toLowerCase() === selectedFilterSpace.trim().toLowerCase());
                       
-                    return matchesText && matchesTag;
+                    return matchesText && matchesTag && matchesSpace;
                   });
 
                   if (filtered.length === 0) {
