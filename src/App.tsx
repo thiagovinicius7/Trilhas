@@ -377,11 +377,6 @@ export default function App() {
     const newPontos = [...pontos, newPoint];
     updatePontosAndStore(newPontos);
     showStatus(`"${newPoint.nome}" salvo localmente!`, 'ok');
-
-    // Trigger background cloud sync
-    if (webAppUrl) {
-      savePointToCloudSilently(newPoint);
-    }
   };
 
   // Fetch shared points for the "Banco de Práticas"
@@ -466,21 +461,14 @@ export default function App() {
   };
 
   const handleUpdatePoint = (id: string, updatedFields: Partial<TrailPoint>) => {
-    let updatedPoint: TrailPoint | null = null;
     const updated = pontos.map(p => {
       if (p.id === id) {
-        updatedPoint = { ...p, ...updatedFields };
-        return updatedPoint;
+        return { ...p, ...updatedFields };
       }
       return p;
     });
     updatePontosAndStore(updated);
     showStatus('Parada atualizada.', 'ok');
-
-    // Trigger background cloud sync for the updated point
-    if (webAppUrl && updatedPoint) {
-      savePointToCloudSilently(updatedPoint);
-    }
   };
 
   const handleMoveUp = (index: number) => {
@@ -531,13 +519,68 @@ export default function App() {
     }
 
     setIsSavingCloud(true);
-    setStatusMessage('Enviando dados para a nuvem...');
+    setStatusMessage('Verificando práticas já existentes na nuvem...');
+    setStatusType('info');
+
+    let currentCloudPoints: TrailPoint[] = [];
+    try {
+      const response = await fetch(`${webAppUrl}?acao=listar`);
+      const responseText = await response.text();
+      const result = JSON.parse(responseText);
+
+      if (result.ok && Array.isArray(result.pontos)) {
+        currentCloudPoints = result.pontos.map((p: any, idx: number) => ({
+          id: p.id || `cloud-${idx}-${Math.random().toString(36).substring(2, 5)}`,
+          data: p.data || new Date().toISOString(),
+          nome: p.nome || '',
+          local: p.local || p.Tags || p.tags || '',
+          descricao: p.descricao || '',
+          praticas: p.praticas || '',
+          autor: p.autor || '',
+          grupo: p.grupo || '',
+        }));
+      } else {
+        currentCloudPoints = sharedPoints;
+      }
+    } catch (e) {
+      console.warn('Não foi possível verificar duplicatas na nuvem em tempo real, usando cache local:', e);
+      currentCloudPoints = sharedPoints;
+    }
+
+    // Filtrar somente as paradas do roteiro atual que ainda NÃO foram salvas na planilha
+    const unsharedPoints = pontos.filter(localPoint => {
+      // Se o ID local já for do tipo nuvem, já foi compartilhado
+      if (localPoint.id.startsWith('row-') || localPoint.id.startsWith('cloud-')) {
+        return false;
+      }
+
+      // Comparação minuciosa de conteúdo para evitar nomes de locais duplicados por outros meios
+      const alreadyExists = currentCloudPoints.some(cp => {
+        const matchesId = cp.id === localPoint.id;
+        const matchesContent = 
+          cp.nome.trim().toLowerCase() === localPoint.nome.trim().toLowerCase() &&
+          cp.autor.trim().toLowerCase() === localPoint.autor.trim().toLowerCase() &&
+          cp.descricao.trim().toLowerCase() === localPoint.descricao.trim().toLowerCase();
+        return matchesId || matchesContent;
+      });
+
+      return !alreadyExists;
+    });
+
+    if (unsharedPoints.length === 0) {
+      showStatus('Todas as práticas deste roteiro já estão compartilhadas no banco de práticas!', 'ok');
+      setActiveTab('banco-ideias');
+      setIsSavingCloud(false);
+      return;
+    }
+
+    setStatusMessage(`Enviando ${unsharedPoints.length} nova(s) prática(s) para a nuvem...`);
     setStatusType('info');
 
     try {
       const payload = {
         acao: 'salvar',
-        pontos: pontos.map(p => ({
+        pontos: unsharedPoints.map(p => ({
           id: p.id,
           data: p.data,
           nome: p.nome,
@@ -564,7 +607,7 @@ export default function App() {
       const result = JSON.parse(responseText);
       
       if (result.ok) {
-        showStatus(`Roteiro compartilhado com sucesso! Fortalecendo o banco de práticas pedagógicas.`, 'ok');
+        showStatus(`Roteiro compartilhado com sucesso! ${unsharedPoints.length} nova(s) prática(s) adicionada(s) ao banco.`, 'ok');
         setActiveTab('banco-ideias');
         // Trigger list reload
         loadSharedPoints(true);
