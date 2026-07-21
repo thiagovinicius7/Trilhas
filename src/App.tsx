@@ -981,86 +981,130 @@ export default function App() {
                     );
                   }
 
-                  return (
-                    <div className="space-y-4">
-                      {filtered.map((point) => (
-                        <div key={point.id} className="bg-brand-paper border border-brand-line rounded-[24px] p-5 shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col sm:flex-row gap-5 items-start">
-                          {/* Photo or Placeholder */}
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#f5f2ed] rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-brand-line shadow-inner">
-                            {point.foto ? (
-                              <button
-                                type="button"
-                                onClick={() => setActiveZoomedPhoto({ src: point.foto!, title: point.nome })}
-                                className="w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus:outline-none overflow-hidden relative group/shared-photo"
-                                title="Clique para ampliar a foto"
-                              >
-                                <img
-                                  src={point.foto}
-                                  alt={point.nome}
-                                  className="w-full h-full object-cover animate-fade-in transition-transform group-hover/shared-photo:scale-110 duration-500"
-                                  referrerPolicy="no-referrer"
-                                />
-                                <div className="absolute inset-0 bg-black/0 group-hover/shared-photo:bg-black/10 transition-colors flex items-center justify-center">
-                                  <span className="text-[8px] text-white bg-black/60 px-1 py-0.5 rounded opacity-0 group-hover/shared-photo:opacity-100 transition-opacity font-sans font-bold uppercase">
-                                    Ampliar
-                                  </span>
-                                </div>
-                              </button>
-                            ) : (
-                              <span className="text-[10px] italic text-[#8c8878] font-serif">Sem foto</span>
-                            )}
-                          </div>
+                  // Agrupar os itens por nome de local de observação (espaço) de forma tolerante a maiúsculas/minúsculas
+                  const groups: { [key: string]: typeof filtered } = {};
+                  filtered.forEach(p => {
+                    const originalName = p.nome || 'Outros Espaços';
+                    const key = originalName.trim().toLowerCase();
+                    if (!groups[key]) {
+                      groups[key] = [];
+                    }
+                    groups[key].push(p);
+                  });
 
-                          {/* Details */}
-                          <div className="flex-1 space-y-2">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-brand-leaf font-bold uppercase tracking-wider mb-0.5">
-                                <span className="bg-[#f0f4ec] px-2 py-0.5 rounded-full text-brand-green">{point.grupo || 'Grupo'}</span>
-                                <span className="text-brand-terra/50 font-normal">por {point.autor || 'Educadora'}</span>
+                  // Ordenar os grupos por nome em ordem alfabética
+                  const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+                    const nameA = groups[a][0].nome || '';
+                    const nameB = groups[b][0].nome || '';
+                    return nameA.localeCompare(nameB, 'pt-BR');
+                  });
+
+                  return (
+                    <div className="space-y-6">
+                      {sortedGroupKeys.map((groupKey) => {
+                        const items = groups[groupKey];
+                        const spaceDisplayName = items[0].nome || 'Espaço Sem Nome';
+                        
+                        return (
+                          <div key={groupKey} className="bg-brand-parchment/20 border border-brand-line/65 rounded-[24px] p-4 md:p-5 space-y-4">
+                            {/* Group Header */}
+                            <div className="flex items-center justify-between pb-2 border-b border-brand-line/30">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-brand-ochre shrink-0" />
+                                <h3 className="font-serif font-bold text-sm md:text-base text-brand-green leading-snug">
+                                  {spaceDisplayName}
+                                </h3>
                               </div>
-                              <h4 className="font-serif font-bold text-base text-brand-green leading-snug">{point.nome}</h4>
-                              
-                              {/* Display Tags as Badges */}
-                              <div className="flex flex-wrap gap-1 mt-1.5 items-center">
-                                <Tag size={12} className="text-brand-ochre shrink-0" />
-                                {(point.local || '').split(',').map((tag, tIdx) => {
-                                  const cleanTag = tag.trim();
-                                  if (!cleanTag) return null;
-                                  return (
-                                    <span key={tIdx} className="bg-[#f0f4ec] text-[#5b8241] text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-[#e6e2d3]/50">
-                                      {cleanTag}
-                                    </span>
-                                  );
-                                })}
-                              </div>
+                              <span className="bg-[#f0f4ec] text-[#5b8241] text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0">
+                                {items.length} {items.length === 1 ? 'prática' : 'práticas'}
+                              </span>
                             </div>
 
-                            {point.descricao && (
-                              <p className="text-xs text-[#6b6858] italic leading-relaxed line-clamp-3">
-                                {point.descricao}
-                              </p>
-                            )}
+                            {/* Sub-itens inside this space group */}
+                            <div className="space-y-4">
+                              {items.map((point) => (
+                                <div key={point.id} className="bg-brand-paper border border-brand-line/40 rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col sm:flex-row gap-4 items-start">
+                                  {/* Photo or Placeholder */}
+                                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#f5f2ed] rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-brand-line shadow-inner">
+                                    {point.foto ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveZoomedPhoto({ src: point.foto!, title: point.nome })}
+                                        className="w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus:outline-none overflow-hidden relative group/shared-photo"
+                                        title="Clique para ampliar a foto"
+                                      >
+                                        <img
+                                          src={point.foto}
+                                          alt={point.nome}
+                                          className="w-full h-full object-cover animate-fade-in transition-transform group-hover/shared-photo:scale-110 duration-500"
+                                          referrerPolicy="no-referrer"
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover/shared-photo:bg-black/10 transition-colors flex items-center justify-center">
+                                          <span className="text-[8px] text-white bg-black/60 px-1 py-0.5 rounded opacity-0 group-hover/shared-photo:opacity-100 transition-opacity font-sans font-bold uppercase">
+                                            Ampliar
+                                          </span>
+                                        </div>
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] italic text-[#8c8878] font-serif">Sem foto</span>
+                                    )}
+                                  </div>
 
-                            {point.praticas && (
-                              <div className="bg-[#fcfbf9] border border-brand-line/45 p-3 rounded-xl text-[11px] leading-relaxed">
-                                <strong className="text-brand-green block font-serif italic text-xs mb-0.5">💡 Prática Sugerida:</strong>
-                                <p className="text-brand-terra/90">{point.praticas}</p>
-                              </div>
-                            )}
-                          </div>
+                                  {/* Details */}
+                                  <div className="flex-1 space-y-2">
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-brand-leaf font-bold uppercase tracking-wider mb-0.5">
+                                        <span className="bg-[#f0f4ec] px-2 py-0.5 rounded-full text-brand-green">{point.grupo || 'Grupo'}</span>
+                                        <span className="text-brand-terra/50 font-normal">por {point.autor || 'Educadora'}</span>
+                                      </div>
+                                      
+                                      {/* Display Tags as Badges */}
+                                      {point.local && (
+                                        <div className="flex flex-wrap gap-1 mt-1 items-center">
+                                          <Tag size={12} className="text-brand-ochre shrink-0" />
+                                          {point.local.split(',').map((tag, tIdx) => {
+                                            const cleanTag = tag.trim();
+                                            if (!cleanTag) return null;
+                                            return (
+                                              <span key={tIdx} className="bg-[#f0f4ec] text-[#5b8241] text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-[#e6e2d3]/50">
+                                                {cleanTag}
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
 
-                          {/* Actions */}
-                          <div className="w-full sm:w-auto self-stretch sm:self-center flex sm:flex-col justify-end items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-brand-line/40">
-                            <button
-                              type="button"
-                              onClick={() => handleCopySharedPoint(point)}
-                              className="w-full sm:w-auto bg-brand-green hover:bg-brand-leaf text-white font-bold text-xs px-4 py-2.5 rounded-full flex items-center justify-center gap-1 shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95"
-                            >
-                              <span>+ Usar Prática</span>
-                            </button>
+                                    {point.descricao && (
+                                      <p className="text-xs text-[#6b6858] italic leading-relaxed line-clamp-3">
+                                        {point.descricao}
+                                      </p>
+                                    )}
+
+                                    {point.praticas && (
+                                      <div className="bg-[#fcfbf9] border border-brand-line/45 p-3 rounded-xl text-[11px] leading-relaxed">
+                                        <strong className="text-brand-green block font-serif italic text-xs mb-0.5">💡 Prática Sugerida:</strong>
+                                        <p className="text-brand-terra/90">{point.praticas}</p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="w-full sm:w-auto self-stretch sm:self-center flex sm:flex-col justify-end items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-brand-line/40">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySharedPoint(point)}
+                                      className="w-full sm:w-auto bg-brand-green hover:bg-brand-leaf text-white font-bold text-xs px-4 py-2.5 rounded-full flex items-center justify-center gap-1 shadow-sm transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                                    >
+                                      <span>+ Usar Prática</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })()}

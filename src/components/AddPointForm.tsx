@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Tag, Heading, FileText, Compass, Camera, X, Plus, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { compressImage } from '../utils';
 
@@ -38,13 +38,40 @@ export default function AddPointForm({ onAddPoint, hasProfile, existingNames = [
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Sugestões inteligentes de nomes de locais já existentes
-  const suggestions = (existingNames || []).filter(name => {
-    if (!name) return false;
-    // Se o campo estiver vazio, mostra até 8 sugestões comuns, caso contrário, filtra o que foi digitado
-    if (!nome.trim()) return true;
-    return name.toLowerCase().includes(nome.toLowerCase()) && name.toLowerCase() !== nome.toLowerCase();
-  }).slice(0, 8);
+  // Sugestões inteligentes de nomes de locais já existentes e padrões do Sítio-Escola Geranium
+  const suggestions = useMemo(() => {
+    const defaultSpaces = [
+      'Meliponário',
+      'Quintal Agroecológico',
+      'Minhocário',
+      'Espiral de Ervas',
+      'Horta Circular',
+      'Composteira',
+      'Trilha Ecológica',
+      'Sistema Agroflorestal (SAF)',
+      'Berçário de Mudas',
+      'Lago de Bananeiras',
+      'Horta de Plantas Medicinais'
+    ];
+    
+    // Unir os nomes existentes passados pelo pai com a lista padrão para manter consistência
+    const combined = Array.from(new Set([
+      ...defaultSpaces,
+      ...(existingNames || [])
+    ]));
+
+    const searchStr = nome.trim().toLowerCase();
+    
+    if (!searchStr) {
+      // Se não digitou nada, mostra uma lista de sugestões padrão para inspirar/guiar o usuário
+      return combined.slice(0, 8);
+    }
+
+    // Filtra por proximidade do texto digitado
+    return combined.filter(name => {
+      return name.toLowerCase().includes(searchStr) && name.toLowerCase() !== searchStr;
+    }).slice(0, 8);
+  }, [existingNames, nome]);
 
   const handleSuggestionClick = (selectedName: string) => {
     setNome(selectedName);
@@ -178,7 +205,7 @@ export default function AddPointForm({ onAddPoint, hasProfile, existingNames = [
               <Heading size={13} className="text-brand-leaf" />
               Nome do Ponto *
             </label>
-            <div className="relative">
+            <div className={`relative ${isFocused ? 'z-40' : 'z-10'}`}>
               <input
                 id="ponto-nome"
                 type="text"
@@ -188,7 +215,7 @@ export default function AddPointForm({ onAddPoint, hasProfile, existingNames = [
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => {
                   // Pequeno delay para permitir que o evento onMouseDown seja registrado na sugestão
-                  setTimeout(() => setIsFocused(false), 150);
+                  setTimeout(() => setIsFocused(false), 200);
                 }}
                 placeholder="Ex.: Minhocário Experimental"
                 className="w-full bg-[#f9f8f6] border border-[#e6e2d3] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green transition-all text-brand-terra"
@@ -196,7 +223,7 @@ export default function AddPointForm({ onAddPoint, hasProfile, existingNames = [
               />
               {/* Balão flutuante de sugestões de locais que já existem no ecossistema do app */}
               {isFocused && suggestions.length > 0 && (
-                <div className="absolute z-30 left-0 right-0 mt-1 bg-brand-paper border border-[#e6e2d3] rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-brand-line/30">
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-brand-paper border-2 border-brand-line rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-brand-line/30">
                   <div className="px-3 py-1.5 bg-[#fbfaf8] text-[9px] uppercase font-bold text-[#8c8878] tracking-wider border-b border-brand-line/30">
                     Sugestões existentes
                   </div>
@@ -205,10 +232,10 @@ export default function AddPointForm({ onAddPoint, hasProfile, existingNames = [
                       key={suggestion}
                       type="button"
                       onMouseDown={() => handleSuggestionClick(suggestion)}
-                      className="w-full text-left px-4 py-2 text-xs text-brand-terra hover:bg-[#f5f2ed] hover:text-brand-green transition-colors focus:outline-none focus:bg-[#f5f2ed] flex items-center justify-between cursor-pointer"
+                      className="w-full text-left px-4 py-2.5 text-xs text-brand-terra hover:bg-[#f5f2ed] hover:text-brand-green transition-colors focus:outline-none focus:bg-[#f5f2ed] flex items-center justify-between cursor-pointer"
                     >
-                      <span>{suggestion}</span>
-                      <span className="text-[10px] text-brand-leaf font-bold">Usar</span>
+                      <span className="font-medium">{suggestion}</span>
+                      <span className="text-[10px] text-brand-leaf font-bold uppercase tracking-wider bg-[#f0f4ec] px-2 py-0.5 rounded">Usar</span>
                     </button>
                   ))}
                 </div>
