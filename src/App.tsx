@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Compass, 
   Cloud, 
@@ -108,6 +108,41 @@ export default function App() {
   useEffect(() => {
     // States are already synchronously loaded on initialization!
   }, []);
+
+  // Obter todos os nomes de pontos/locais já existentes para sugestões inteligentes
+  const existingNames = useMemo(() => {
+    const namesSet = new Set<string>();
+    
+    // 1. Dos pontos locais ativos
+    pontos.forEach(p => {
+      if (p.nome) {
+        const trimmed = p.nome.trim();
+        if (trimmed) namesSet.add(trimmed);
+      }
+    });
+
+    // 2. Dos pontos compartilhados na nuvem (Banco de Práticas)
+    sharedPoints.forEach(p => {
+      if (p.nome) {
+        const trimmed = p.nome.trim();
+        if (trimmed) namesSet.add(trimmed);
+      }
+    });
+
+    // 3. De outros roteiros salvos localmente
+    savedRoadmaps.forEach(rm => {
+      if (rm.pontos) {
+        rm.pontos.forEach(p => {
+          if (p.nome) {
+            const trimmed = p.nome.trim();
+            if (trimmed) namesSet.add(trimmed);
+          }
+        });
+      }
+    });
+
+    return Array.from(namesSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [pontos, sharedPoints, savedRoadmaps]);
 
   // Sync state helpers that update localStorage
   const updatePontosAndStore = (newPontos: TrailPoint[]) => {
@@ -728,6 +763,7 @@ export default function App() {
           <AddPointForm 
             onAddPoint={handleAddPoint} 
             hasProfile={!!autor && !!grupo} 
+            existingNames={existingNames}
           />
         </div>
 

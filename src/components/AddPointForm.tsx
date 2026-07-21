@@ -16,10 +16,12 @@ interface AddPointFormProps {
     foto?: string;
   }) => void;
   hasProfile: boolean;
+  existingNames?: string[];
 }
 
-export default function AddPointForm({ onAddPoint, hasProfile }: AddPointFormProps) {
+export default function AddPointForm({ onAddPoint, hasProfile, existingNames = [] }: AddPointFormProps) {
   const [nome, setNome] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('geranium_tags_disponiveis');
@@ -35,6 +37,19 @@ export default function AddPointForm({ onAddPoint, hasProfile }: AddPointFormPro
   const [foto, setFoto] = useState<string | undefined>(undefined);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Sugestões inteligentes de nomes de locais já existentes
+  const suggestions = (existingNames || []).filter(name => {
+    if (!name) return false;
+    // Se o campo estiver vazio, mostra até 8 sugestões comuns, caso contrário, filtra o que foi digitado
+    if (!nome.trim()) return true;
+    return name.toLowerCase().includes(nome.toLowerCase()) && name.toLowerCase() !== nome.toLowerCase();
+  }).slice(0, 8);
+
+  const handleSuggestionClick = (selectedName: string) => {
+    setNome(selectedName);
+    setIsFocused(false);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -163,15 +178,42 @@ export default function AddPointForm({ onAddPoint, hasProfile }: AddPointFormPro
               <Heading size={13} className="text-brand-leaf" />
               Nome do Ponto *
             </label>
-            <input
-              id="ponto-nome"
-              type="text"
-              required
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex.: Minhocário Experimental"
-              className="w-full bg-[#f9f8f6] border border-[#e6e2d3] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green transition-all text-brand-terra"
-            />
+            <div className="relative">
+              <input
+                id="ponto-nome"
+                type="text"
+                required
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => {
+                  // Pequeno delay para permitir que o evento onMouseDown seja registrado na sugestão
+                  setTimeout(() => setIsFocused(false), 150);
+                }}
+                placeholder="Ex.: Minhocário Experimental"
+                className="w-full bg-[#f9f8f6] border border-[#e6e2d3] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-green transition-all text-brand-terra"
+                autoComplete="off"
+              />
+              {/* Balão flutuante de sugestões de locais que já existem no ecossistema do app */}
+              {isFocused && suggestions.length > 0 && (
+                <div className="absolute z-30 left-0 right-0 mt-1 bg-brand-paper border border-[#e6e2d3] rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-brand-line/30">
+                  <div className="px-3 py-1.5 bg-[#fbfaf8] text-[9px] uppercase font-bold text-[#8c8878] tracking-wider border-b border-brand-line/30">
+                    Sugestões existentes
+                  </div>
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onMouseDown={() => handleSuggestionClick(suggestion)}
+                      className="w-full text-left px-4 py-2 text-xs text-brand-terra hover:bg-[#f5f2ed] hover:text-brand-green transition-colors focus:outline-none focus:bg-[#f5f2ed] flex items-center justify-between cursor-pointer"
+                    >
+                      <span>{suggestion}</span>
+                      <span className="text-[10px] text-brand-leaf font-bold">Usar</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
